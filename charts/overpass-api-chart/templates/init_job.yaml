@@ -32,7 +32,7 @@ spec:
           echo "PVC is bound"
       containers:
       - name: overpass-init
-        image: "{{ .Values.updateJob.image.repository }}:{{ .Chart.AppVersion }}"
+        image: "{{ .Values.updateJob.image.repository }}:{{ .Values.updateJob.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.updateJob.image.pullPolicy }}
         command:
         - /bin/sh

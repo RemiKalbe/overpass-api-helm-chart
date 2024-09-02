@@ -29,7 +29,7 @@ spec:
           echo "Init job completed"
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.apiService.image.repository }}:{{ .Chart.AppVersion }}"
+          image: "{{ .Values.apiService.image.repository }}:{{ .Values.apiService.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.apiService.image.pullPolicy }}
           env:
           - name: OVERPASS_MODE

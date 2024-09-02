@@ -11,7 +11,7 @@ spec:
         spec:
           containers:
           - name: overpass-update
-            image: "{{ .Values.updateJob.image.repository }}:{{ .Chart.AppVersion }}"
+            image: "{{ .Values.updateJob.image.repository }}:{{ .Values.updateJob.image.tag | default .Chart.AppVersion }}"
             imagePullPolicy: {{ .Values.updateJob.image.pullPolicy }}
             env:
             - name: OVERPASS_MODE
