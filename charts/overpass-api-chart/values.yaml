@@ -41,6 +41,8 @@ updateJob:
   image:
     repository: remikalbe/overpass-api-kube
     pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
   planetUrl: "https://planet.openstreetmap.org/planet/planet-latest.osm.bz2"
   # URL to download the initial OSM planet file
   # Explanation:
@@ -128,6 +130,8 @@ apiService:
   image:
     repository: remikalbe/overpass-api-kube
     pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
   service:
     type: ClusterIP
     port: 80
