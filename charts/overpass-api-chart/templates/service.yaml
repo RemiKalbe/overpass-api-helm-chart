@@ -5,9 +5,9 @@ metadata:
   labels:
     {{- include "overpass-api.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.apiService.service.type }}
+  type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.apiService.service.port }}
+    - port: {{ .Values.service.port }}
       targetPort: http
       protocol: TCP
       name: http

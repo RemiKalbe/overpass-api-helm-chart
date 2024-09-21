@@ -52,8 +52,8 @@ ENV PATH="/app/osm-3s/bin:${PATH}" \
   OVERPASS_MAX_TIMEOUT=1000
 
 # Copy scripts and configuration
-COPY start_overpass.sh /app/
-COPY update_overpass.sh /app/
+COPY run_overpass.sh /app/
+COPY health_check.sh /app/
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Make scripts executable
@@ -63,4 +63,4 @@ RUN chmod +x /app/*.sh
 EXPOSE 80
 
 # Set entrypoint
-ENTRYPOINT ["/app/start_overpass.sh"]
+ENTRYPOINT ["/app/run_overpass.sh"]

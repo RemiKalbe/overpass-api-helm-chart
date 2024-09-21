@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "overpass-api.fullname" . }}
+  labels:
+    {{- include "overpass-api.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "overpass-api.fullname" . }}
+  serviceAccountName: {{ include "overpass-api.fullname" . }}-sa
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "overpass-api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "overpass-api.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: OVERPASS_META
+            value: {{ .Values.overpass.meta | quote }}
+          - name: OVERPASS_FASTCGI_PROCESSES
+            value: {{ .Values.overpass.fastcgiProcesses | quote }}
+          - name: OVERPASS_RATE_LIMIT
+            value: {{ .Values.overpass.rateLimit | quote }}
+          - name: OVERPASS_TIME
+            value: {{ .Values.overpass.time | quote }}
+          - name: OVERPASS_SPACE
+            value: {{ .Values.overpass.space | quote }}
+          - name: OVERPASS_MAX_TIMEOUT
+            value: {{ .Values.overpass.maxTimeout | quote }}
+          - name: OVERPASS_PLANET_URL
+            value: {{ .Values.overpass.planetUrl | quote }}
+          - name: OVERPASS_DIFF_URL
+            value: {{ .Values.overpass.diffUrl | quote }}
+          - name: OVERPASS_UPDATE_FREQUENCY
+            value: {{ .Values.overpass.updateFrequency | quote }}
+          - name: OVERPASS_COMPRESSION
+            value: {{ .Values.overpass.compression | quote }}
+          - name: OVERPASS_RULES_LOAD
+            value: {{ .Values.overpass.rulesLoad | quote }}
+          - name: OVERPASS_ALLOW_DUPLICATE_QUERIES
+            value: {{ .Values.overpass.allowDuplicateQueries | quote }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          volumeMounts:
+          - name: data
+            mountPath: /app/db
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - /app/health_check.sh
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - /app/health_check.sh
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ {{ .Values.persistence.accessMode | quote }} ]
+      storageClassName: {{ .Values.persistence.storageClass | quote }}
+      resources:
+        requests:
+          storage: {{ .Values.persistence.size | quote }}

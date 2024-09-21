@@ -1,46 +1,59 @@
-nameOverride: ""
-fullnameOverride: ""
-
 #
 # Common Settings
 #
 
-overpassMeta: "yes"
-# Controls whether metadata is included in the Overpass database. 
-# Options: 
-#   "yes" (include metadata)
-#   "no" (exclude metadata)
-#   "attic" (include historical metadata)
-# Explanation:
-#   Metadata includes information like the user who last modified an element, the timestamp of the modification, and the changeset ID.
-#   - "yes": Includes current metadata. Useful for applications that need to know when and by whom data was last modified.
-#            Increases database size by about 50% compared to "no".
-#   - "no": Excludes all metadata. Results in the smallest database size. Use this if you only need the current state of OSM data.
-#   - "attic": Includes historical metadata. Allows for time-based queries but dramatically increases database size (can be 5-10 times larger).
+nameOverride: ""
+fullnameOverride: ""
 
-overpassCompression: "gz"
-# Specifies the compression method for the Overpass database.
-# Options: 
-#   "no" (no compression)
-#   "gz" (gzip compression)
-#   "lz4" (LZ4 compression)
-# Explanation:
-#   Compression reduces disk space usage but affects read/write performance.
-#   - "no": Fastest read/write performance, but largest disk usage.
-#   - "gz": Good compression ratio, slower than "no" and "lz4". Best for disk space constrained environments.
-#   - "lz4": Fast compression/decompression, less space-saving than "gz". Good balance of performance and space saving.
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 80
+
+image:
+  repository: remikalbe/overpass-api-kube
+  pullPolicy: IfNotPresent
 
 #
-# Update Job Settings
+# Persistent Volume Claim
 #
-updateJob:
-  schedule: "0 */6 * * *"
-  # Determines how often your Overpass database is updated with new OSM data.
-  # Default is every 6 hours.
+persistence:
+  accessMode: ReadWriteOnce
+  size: 100Gi
+  storageClass: ""
 
-  image:
-    repository: remikalbe/overpass-api-kube
-    pullPolicy: IfNotPresent
+#
+# Resource Limits
+#
+resources:
+  limits:
+    cpu: 1
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+#
+# Ingress Configuration
+#
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  hosts:
+  - host: overpass.example.com
+    paths:
+    - path: /
+      pathType: ImplementationSpecific
+  tls: []
+
+#
+# Overpass Settings
+#
+overpass:
   planetUrl: "https://planet.openstreetmap.org/planet/planet-latest.osm.bz2"
   # URL to download the initial OSM planet file
   # Explanation:
@@ -58,41 +71,71 @@ updateJob:
   #   This setting specifies the source of incremental updates (diffs) used to keep your Overpass database current after the initial import.
   #   The URL points to a directory containing change files, which are organized by date and time.
   #   
-  #   Options: (non exhaustive list)
+  # Options: (non-exhaustive list)
   #   - Minute diffs: "https://planet.openstreetmap.org/replication/minute/"
   #   - Hourly diffs: "https://planet.openstreetmap.org/replication/hour/"
   #   - Daily diffs:  "https://planet.openstreetmap.org/replication/day/"
   #   
-  #   Important Note:
-  #   The frequency of updates is determined by the 'schedule' setting in the update job, not by the choice of diff URL.
-  #   This setting only affects the granularity of the change files available to the updater.
+  # Important Note:
+  #   The frequency of updates is determined by the Overpass API's internal update process, which runs continuously.
+  #   This setting affects the granularity of the change files that will be applied to keep the database current.
   #
   # When to change:
-  #   - Switch to hourly or daily diffs if you're updating less frequently (e.g., daily or weekly) to reduce the number of files processed during each update.
-  #   - Use minute diffs if you want the option to update very frequently or need the most granular change data available.
+  #   - Use minute diffs for the most up-to-date data, suitable for applications requiring near real-time updates.
+  #   - Switch to hourly or daily diffs if you want to reduce the frequency of updates and the associated processing overhead.
   #   - Change to a regional diff source if you're only maintaining data for a specific area and such a source is available.
+  #
+  # Default recommendation:
+  #   Use minute diffs for the most current data, unless you have specific reasons to use less frequent updates.
 
   updateFrequency: "minute"
   # Specifies the granularity of update files (diffs) being used
   # Options: "minute", "hour", "day"
   # Explanation:
-  #   This setting informs the updater about the type of diff files that are available and being used.
-  #   It doesn't change or set the diff files; it merely tells the updater what to expect.
+  #   This setting informs the Overpass API about the type of diff files that are available and should be used for updates.
+  #   It must match the granularity of the diffs provided by the diffUrl.
   #
-  #   Key points:
-  #   - This must match the actual granularity of diffs provided by the diffUrl.
-  #   - It doesn't affect how often the update job runs (controlled by 'schedule').
-  #   - It only tells the updater what type of diffs to expect when it does run.
+  # Key points:
+  #   - This setting directly affects how often the Overpass API will check for and apply updates.
+  #   - It should always correspond to the type of diffs available at the specified diffUrl.
+  #   - The Overpass API will continuously apply updates based on this frequency.
   #
-  #   For example:
-  #   - If diffUrl is set to minute diffs, this should be "minute".
-  #   - The updater will then know to process minute-by-minute changes, regardless of how often it runs.
-  #
-  #   Correct alignment:
+  # Correct alignment:
   #   - "minute" for https://planet.openstreetmap.org/replication/minute/
   #   - "hour" for https://planet.openstreetmap.org/replication/hour/
   #   - "day" for https://planet.openstreetmap.org/replication/day/
+  #
+  # When to change:
+  #   - Change this if you modify the diffUrl to a different update frequency.
+  #   - Consider using a less frequent update (e.g., "hour" or "day") if you want to reduce the processing load on your Overpass API instance.
+  #
+  # Default recommendation:
+  #   Use "minute" for the most up-to-date data, matching the default diffUrl. Adjust only if you have specific needs for less frequent updates.
 
+  meta: "yes"
+  # Controls whether metadata is included in the Overpass database. 
+  # Options: 
+  #   "yes" (include metadata)
+  #   "no" (exclude metadata)
+  #   "attic" (include historical metadata)
+  # Explanation:
+  #   Metadata includes information like the user who last modified an element, the timestamp of the modification, and the changeset ID.
+  #   - "yes": Includes current metadata. Useful for applications that need to know when and by whom data was last modified.
+  #            Increases database size by about 50% compared to "no".
+  #   - "no": Excludes all metadata. Results in the smallest database size. Use this if you only need the current state of OSM data.
+  #   - "attic": Includes historical metadata. Allows for time-based queries but dramatically increases database size (can be 5-10 times larger).
+
+  compression: "gz"
+  # Specifies the compression method for the Overpass database.
+  # Options: 
+  #   "no" (no compression)
+  #   "gz" (gzip compression)
+  #   "lz4" (LZ4 compression)
+  # Explanation:
+  #   Compression reduces disk space usage but affects read/write performance.
+  #   - "no": Fastest read/write performance, but largest disk usage.
+  #   - "gz": Good compression ratio, slower than "no" and "lz4". Best for disk space constrained environments.
+  #   - "lz4": Fast compression/decompression, less space-saving than "gz". Good balance of performance and space saving.
 
   rulesLoad: 1
   # Controls the aggressiveness of area generation during updates
@@ -120,17 +163,6 @@ updateJob:
   # Default recommendation:
   #   Start with 1 and increase only if you notice delays in area data being available for queries and have available CPU capacity.
 
-#
-# API Service Settings
-#
-apiService:
-  replicaCount: 3
-  image:
-    repository: remikalbe/overpass-api-kube
-    pullPolicy: IfNotPresent
-  service:
-    type: ClusterIP
-    port: 80
   fastcgiProcesses: 4
   # Number of FastCGI processes to run for handling API requests
   # Explanation:
@@ -189,40 +221,16 @@ apiService:
   # Default recommendation:
   #   Keep it equal to the 'time' setting unless you have specific reasons to allow longer client-specified timeouts.
 
-#
-# Persistent Volume Claim
-#
-persistence:
-  enabled: true
-  accessMode: ReadWriteMany
-  size: 100Gi
-  storageClass: "longhorn"
-  annotations:
-    longhorn.io/shared-filesystem: "true"
-
-#
-# Resource Limits
-#
-resources:
-  limits:
-    cpu: 1
-    memory: 2Gi
-  requests:
-    cpu: 500m
-    memory: 1Gi
-
-#
-# Ingress Configuration
-#
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-  # kubernetes.io/ingress.class: nginx
-  # kubernetes.io/tls-acme: "true"
-  hosts:
-  - host: overpass.example.com
-    paths:
-    - path: /
-      pathType: ImplementationSpecific
-  tls: []
+  allowDuplicateQueries: "no"
+  # Controls whether duplicate queries are allowed in the Overpass API.
+  # Options:
+  #   "yes" (allow duplicate queries)
+  #   "no" (disallow duplicate queries)
+  # Explanation:
+  #   This setting affects how Overpass API handles repeated identical queries.
+  #   When set to "no", Overpass API will block repeated identical queries within a short time frame.
+  #   This helps prevent accidental or intentional overload of the server with duplicate requests.
+  #   When set to "yes", Overpass API will process all queries, even if they are identical and repeated.
+  # When to change:
+  #   - Set to "yes" if your use case requires frequent repetition of identical queries
+  #   - Set to "no" (default) to protect the server from potential abuse or accidental query floods

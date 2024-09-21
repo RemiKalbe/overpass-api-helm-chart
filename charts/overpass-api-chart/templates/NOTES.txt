@@ -14,16 +14,16 @@ To learn more about the release, try:
   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
   {{- end }}
 {{- end }}
-{{- else if contains "NodePort" .Values.apiService.service.type }}
+{{- else if contains "NodePort" .Values.service.type }}
   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "overpass-api.fullname" . }})
   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
   echo http://$NODE_IP:$NODE_PORT
-{{- else if contains "LoadBalancer" .Values.apiService.service.type }}
+{{- else if contains "LoadBalancer" .Values.service.type }}
      NOTE: It may take a few minutes for the LoadBalancer IP to be available.
            You can watch its status by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "overpass-api.fullname" . }}'
   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "overpass-api.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
-  echo http://$SERVICE_IP:{{ .Values.apiService.service.port }}
-{{- else if contains "ClusterIP" .Values.apiService.service.type }}
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
   export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "overpass-api.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
   export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
   echo "Visit http://127.0.0.1:8080 to use your application"
@@ -35,10 +35,7 @@ To learn more about the release, try:
 3. Example query:
    curl -X POST "http://<YOUR-API-URL>/api/interpreter" -d "data=[out:json];node[name='Paris'];out;"
 
-4. To check the status of the update process, you can view the logs of the update job:
-   kubectl logs -f job/{{ include "overpass-api.fullname" . }}-update -n {{ .Release.Namespace }}
-
-5. For more information on using Overpass API, visit: https://wiki.openstreetmap.org/wiki/Overpass_API
+4. For more information on using Overpass API, visit: https://wiki.openstreetmap.org/wiki/Overpass_API
 
 Note: The Overpass API pods will be marked as not ready until the database is fully initialized. 
 This process may take some time depending on the size of your dataset. You can check the status of your pods with:
