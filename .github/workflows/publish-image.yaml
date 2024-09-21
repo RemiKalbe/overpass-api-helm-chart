@@ -22,10 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: |
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'overpass-api-update')) ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
