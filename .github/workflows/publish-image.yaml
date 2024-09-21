@@ -22,47 +22,65 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'overpass-api-update')
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'overpass-api-update')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Extract version and RC tag from labels
+      - name: Get version
+        id: get_version
         run: |
-          VERSION=$(echo "${{ toJson(github.event.pull_request.labels.*.name) }}" | jq -r '.[] | select(startswith("v-")) | sub("v-"; "")')
-          RC_TAG=$(echo "${{ toJson(github.event.pull_request.labels.*.name) }}" | jq -r '.[] | select(startswith("rc-")) | sub("rc-"; "")')
-          echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "RC_TAG=$RC_TAG" >> $GITHUB_ENV
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            VERSION=$(echo "${{ toJson(github.event.pull_request.labels.*.name) }}" | jq -r '.[] | select(startswith("v-")) | sub("v-"; "")')
+          else
+            VERSION=$(yq e '.appVersion' charts/overpass-api-chart/Chart.yaml)
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Check if image exists
+        id: check_image
+        run: |
+          EXISTS=$(docker manifest inspect ${{ env.DOCKER_REPO }}:${{ steps.get_version.outputs.VERSION }} > /dev/null && echo "true" || echo "false")
+          echo "EXISTS=${EXISTS}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
+        if: steps.check_image.outputs.EXISTS == 'false'
         uses: docker/setup-buildx-action@v3
 
       - name: Login to DockerHub
+        if: steps.check_image.outputs.EXISTS == 'false'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Tag and push official version
-        run: |
-          docker pull ${{ env.DOCKER_REPO }}:${{ env.RC_TAG }}
-          docker tag ${{ env.DOCKER_REPO }}:${{ env.RC_TAG }} ${{ env.DOCKER_REPO }}:${{ env.NEW_VERSION }}
-          docker tag ${{ env.DOCKER_REPO }}:${{ env.RC_TAG }} ${{ env.DOCKER_REPO }}:latest
-          docker push ${{ env.DOCKER_REPO }}:${{ env.NEW_VERSION }}
-          docker push ${{ env.DOCKER_REPO }}:latest
+      - name: Build and push Docker image
+        if: steps.check_image.outputs.EXISTS == 'false'
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_REPO }}:${{ steps.get_version.outputs.VERSION }}
+            ${{ env.DOCKER_REPO }}:latest
 
       - name: Create Tag
+        if: github.event_name == 'pull_request'
         run: |
-          git tag image-${{ env.NEW_VERSION }}
-          git push origin ${{ env.NEW_VERSION }}
+          git tag v${{ steps.get_version.outputs.VERSION }}
+          git push origin v${{ steps.get_version.outputs.VERSION }}
 
       - name: Create Release
+        if: steps.check_image.outputs.EXISTS == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          name: Overpass API ${{ env.NEW_VERSION }}
-          tag_name: image-${{ env.NEW_VERSION }}
+          name: Overpass API ${{ steps.get_version.outputs.VERSION }}
+          tag_name: image-${{ steps.get_version.outputs.VERSION }}
           body: |
-            This release contains the official Overpass API version ${{ env.NEW_VERSION }}.
+            This release contains version ${{ steps.get_version.outputs.VERSION }} of the Overpass API image.
 
           draft: false
           prerelease: false

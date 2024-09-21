@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,14 +30,15 @@ jobs:
         working-directory: charts/overpass-api-chart
         run: |
           LATEST_VERSION=$(curl -s https://dev.overpass-api.de/releases/ | grep -oP 'osm-3s_v\K[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1)
-          CURRENT_VERSION=$(grep 'appVersion:' Chart.yaml | awk '{print $2}' | tr -d '"')
+          CURRENT_VERSION=$(yq e '.appVersion' Chart.yaml | cut -d'.' -f1-3)
           echo "Latest version: $LATEST_VERSION"
           echo "Current version: $CURRENT_VERSION"
           if [ "$LATEST_VERSION" != "$CURRENT_VERSION" ]; then
-            echo "NEW_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
-            echo "::set-output name=version_changed::true"
+            echo "NEW_VERSION=$LATEST_VERSION.0" >> $GITHUB_ENV
+            echo "OVERPASS_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
+            echo "version_changed=true" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=version_changed::false"
+            echo "version_changed=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Check for existing PR
@@ -51,6 +53,11 @@ jobs:
           else
             echo "::set-output name=pr_exists::false"
           fi
+
+      - name: Update Chart.yaml
+        if: steps.check-version.outputs.version_changed == 'true' && steps.check-pr.outputs.pr_exists == 'false'
+        run: |
+          yq e '.appVersion = "'"${{ env.NEW_VERSION }}"'"' -i charts/overpass-api-chart/Chart.yaml
 
       - name: Set up QEMU
         if: steps.check-version.outputs.version_changed == 'true' && steps.check-pr.outputs.pr_exists == 'false'
@@ -67,64 +74,40 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Generate unique RC tag
-        id: rc-tag
-        run: |
-          echo "RC_TAG=${{ env.NEW_VERSION }}-rc.${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-
       - name: Build and push Overpass image
         if: steps.check-version.outputs.version_changed == 'true' && steps.check-pr.outputs.pr_exists == 'false'
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.DOCKER_REPO }}:${{ env.RC_TAG }}
+          tags: ${{ env.DOCKER_REPO }}:${{ env.NEW_VERSION }}
           build-args: |
-            OVERPASS_VERSION=${{ env.NEW_VERSION }}
+            OVERPASS_VERSION=${{ env.OVERPASS_VERSION }}
 
-      - name: Update Chart.yaml
-        if: steps.check-version.outputs.version_changed == 'true' && steps.check-pr.outputs.pr_exists == 'false'
-        working-directory: charts/overpass-api-chart
-        run: |
-          sed -i 's/appVersion: .*/appVersion: "${{ env.NEW_VERSION }}"/' Chart.yaml
-          NEW_CHART_VERSION=$(awk '/version:/ {split($2, a, "."); print a[1]"."a[2]+1".0"}' Chart.yaml)
-          sed -i "s/version: .*/version: $NEW_CHART_VERSION/" Chart.yaml
-
-      - name: Commit and push changes
-        if: steps.check-version.outputs.version_changed == 'true' && steps.check-pr.outputs.pr_exists == 'false'
-        working-directory: charts/overpass-api-chart
+      - name: Commit changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add Chart.yaml
+          git add charts/overpass-api-chart/Chart.yaml
           git commit -m "Update Overpass API to version ${{ env.NEW_VERSION }}"
-          git push
+          git push --set-upstream origin update-overpass-api-${{ env.NEW_VERSION }}
 
       - name: Create Pull Request
-        if: steps.check-version.outputs.version_changed == 'true' && steps.check-pr.outputs.pr_exists == 'false'
-        uses: peter-evans/create-pull-request@v3
-        with:
-          title: "Update Overpass API to version ${{ env.NEW_VERSION }}"
-          body: |
-            This PR updates the Overpass API version to ${{ env.NEW_VERSION }}.
-
-            Changes:
-            - Updated appVersion in Chart.yaml
-            - Incremented chart version
-            - Built and pushed new multi-arch Docker image for amd64 and arm64
-            - RC Tag: ${{ env.RC_TAG }}
-
-            Please review and approve. Once approved, the official version will be tagged.
-          branch: "update-overpass-api-${{ env.NEW_VERSION }}"
-          base: "main"
-          labels: |
-            overpass-api-update
-            v-${{ env.NEW_VERSION }}
-            rc-${{ env.RC_TAG }}
-
-      - name: PR Already Exists
-        if: steps.check-version.outputs.version_changed == 'true' && steps.check-pr.outputs.pr_exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "A pull request for updating to version ${{ env.NEW_VERSION }} already exists. Skipping PR creation."
+          PR_BODY="This PR updates the Overpass API version to ${{ env.NEW_VERSION }}.
+
+          Changes:
+          - Updated appVersion in Chart.yaml to ${{ env.NEW_VERSION }}
+          - Incremented chart version
+          - Built and pushed new Docker image with Overpass API ${{ env.OVERPASS_VERSION }}
+
+          Please review and approve."
+
+          gh pr create --title "Update Overpass API to version ${{ env.NEW_VERSION }}" \
+                        --body "$PR_BODY" \
+                        --base main \
+                        --head update-overpass-api-${{ env.NEW_VERSION }} \
+                        --label "overpass-api-update" \
+                        --label "v-${{ env.NEW_VERSION }}"
