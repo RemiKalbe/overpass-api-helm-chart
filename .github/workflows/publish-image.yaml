@@ -10,6 +10,7 @@ on:
       - "health_check.sh"
       - "run_overpass.sh"
       - "nginx.conf"
+      - ".github/workflows/publish-image.yaml"
   pull_request:
     types: [closed]
 

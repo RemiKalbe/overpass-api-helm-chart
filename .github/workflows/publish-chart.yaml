@@ -9,6 +9,7 @@ on:
       - main
     paths:
       - "charts/**"
+      - ".github/workflows/publish-chart.yaml"
 
 env:
   DOCKER_REPO: remikalbe/overpass-api-kube
