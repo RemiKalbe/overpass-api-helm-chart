@@ -24,6 +24,9 @@ spec:
           command:
             - /bin/bash
             - /app/init_overpass.sh
+          volumeMounts:
+          - name: data
+            mountPath: /app/db
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
