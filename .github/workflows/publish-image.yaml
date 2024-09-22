@@ -19,7 +19,7 @@ env:
   HELM_REPO: ghcr.io/${{ github.repository_owner }}/overpass-api-helm-chart
 
 jobs:
-  tag-official-version:
+  build-and-publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
