@@ -31,11 +31,14 @@ jobs:
         id: get_version
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            VERSION=$(echo "${{ toJson(github.event.pull_request.labels.*.name) }}" | jq -r '.[] | select(startswith("v-")) | sub("v-"; "")')
-          else
+            VERSION=$(echo "${{ toJson(github.event.pull_request.labels.*.name) }}" | jq -r '.[] | select(startswith("image-")) | sub("image-"; "")')
+            OVERPASS_VERSION=$(echo "${{ toJson(github.event.pull_request.labels.*.name) }}" | jq -r '.[] | select(startswith("overpass-")) | sub("overpass-"; "")')
+            else
             VERSION=$(yq e '.appVersion' charts/overpass-api-chart/Chart.yaml)
+            OVERPASS_VERSION=$(echo $VERSION | cut -d'.' -f1-3)
           fi
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "OVERPASS_VERSION=${OVERPASS_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Check if image exists
         id: check_image
@@ -55,7 +58,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push Docker image
-        if: steps.check_image.outputs.EXISTS == 'false'
+        if: steps.check_image.outputs.EXISTS == 'false' || github.event_name == 'pull_request'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -72,13 +75,14 @@ jobs:
           docker push ${{ env.DOCKER_REPO }}:latest
 
       - name: Create Release
-        if: steps.check_image.outputs.EXISTS == 'false'
+        if: steps.check_image.outputs.EXISTS == 'false' || github.event_name == 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
-          name: Overpass API ${{ steps.get_version.outputs.VERSION }}
+          name: overpass-api-image-${{ steps.get_version.outputs.VERSION }}
           tag_name: image-${{ steps.get_version.outputs.VERSION }}
           body: |
             This release contains version ${{ steps.get_version.outputs.VERSION }} of the Overpass API image.
+            And version ${{ steps.get_version.outputs.OVERPASS_VERSION }} of the Overpass API.
 
           draft: false
           prerelease: false
