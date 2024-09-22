@@ -18,6 +18,12 @@ spec:
       labels:
         {{- include "overpass-api.selectorLabels" . | nindent 8 }}
     spec:
+      initContainers:
+        - name: init-overpass-data
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          command:
+            - /bin/bash
+            - /app/init_overpass.sh
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

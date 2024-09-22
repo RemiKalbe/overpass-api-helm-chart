@@ -55,6 +55,7 @@ ENV PATH="/app/osm-3s/bin:${PATH}" \
 
 # Copy scripts and configuration
 COPY run_overpass.sh /app/
+COPY init_overpass.sh /app/
 COPY health_check.sh /app/
 COPY nginx.conf /etc/nginx/nginx.conf
 
