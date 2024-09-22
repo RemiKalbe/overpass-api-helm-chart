@@ -1,7 +1,7 @@
-# Overpass API Helm Chart
+> [!WARNING]
+> This project is in very early stages of development and is not production-ready. Use at your own risk and expect frequent changes.
 
-![Kubernetes](https://img.shields.io/badge/Kubernetes-3069DE?style=for-the-badge&logo=kubernetes&logoColor=white)
-![Helm](https://img.shields.io/badge/Helm-277A9F?style=for-the-badge&logo=helm&logoColor=white)
+# 🌍 Overpass API Helm Chart 
 
 [![License](https://img.shields.io/github/license/remikalbe/overpass-api-helm-chart?style=for-the-badge)](LICENSE)
 [![Image build](https://img.shields.io/github/actions/workflow/status/remikalbe/overpass-api-helm-chart/.github%2Fworkflows%2Fpublish-image.yaml?style=for-the-badge&label=image%20build
@@ -14,10 +14,7 @@
 
 This repository contains a Helm chart for deploying Overpass API on Kubernetes. Overpass API is a powerful tool for querying OpenStreetMap data.
 
-> [!WARNING]
-> This project is in very early stages of development and is not production-ready. Use at your own risk and expect frequent changes.
-
-## Quick Start
+## ⚡ Quick Start
 
 1. Add the Helm repository:
    ```console
@@ -34,13 +31,9 @@ This repository contains a Helm chart for deploying Overpass API on Kubernetes. 
    helm install my-overpass-api overpass-api/overpass-api
    ```
 
-## Configuration
+## ⚙️ Configuration
 
-For basic configuration options, see the `values.yaml` file. More detailed documentation will be provided as the project matures.
-
-## License
-
-[MIT License](LICENSE)
+The configuration options for the Overpass API Helm chart are listed in the [values.yaml](charts/overpass-api-chart/values.yaml) file, along with detailed explanations of each option.
 
 ---
 
