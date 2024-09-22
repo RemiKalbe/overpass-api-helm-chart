@@ -27,6 +27,14 @@ spec:
           volumeMounts:
           - name: data
             mountPath: /app/db
+                  volumeMounts:
+          env:
+          - name: OVERPASS_PLANET_URL
+            value: "{{ .Values.overpass.planetUrl }}"
+          - name: OVERPASS_META
+            value: "{{ .Values.overpass.meta }}"
+          - name: OVERPASS_COMPRESSION
+            value: "{{ .Values.overpass.compression }}"
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
