@@ -27,7 +27,6 @@ spec:
           volumeMounts:
           - name: data
             mountPath: /app/db
-                  volumeMounts:
           env:
           - name: OVERPASS_PLANET_URL
             value: "{{ .Values.overpass.planetUrl }}"
