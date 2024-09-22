@@ -8,6 +8,8 @@ spec:
   serviceName: {{ include "overpass-api.fullname" . }}
   serviceAccountName: {{ include "overpass-api.fullname" . }}-sa
   replicas: {{ .Values.replicaCount }}
+  updateStrategy:
+    type: RollingUpdate
   selector:
     matchLabels:
       {{- include "overpass-api.selectorLabels" . | nindent 6 }}

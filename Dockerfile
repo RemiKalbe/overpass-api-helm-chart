@@ -20,6 +20,8 @@ RUN apt-get update && apt-get install -y \
   bzip2 \
   fcgiwrap \
   nginx \
+  curl \
+  jq \
   && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
