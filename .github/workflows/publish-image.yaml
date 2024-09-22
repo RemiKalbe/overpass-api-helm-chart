@@ -1,4 +1,4 @@
-name: Publish Overpass API image
+name: Build & Publish image
 
 on:
   workflow_dispatch: # Allow manual triggering
@@ -64,11 +64,12 @@ jobs:
             ${{ env.DOCKER_REPO }}:${{ steps.get_version.outputs.VERSION }}
             ${{ env.DOCKER_REPO }}:latest
 
-      - name: Create Tag
-        if: github.event_name == 'pull_request'
+      - name: Set as latest (only for PRs)
+        if: github.event_name == 'pull_request' && steps.check_image.outputs.EXISTS == 'true'
         run: |
-          git tag v${{ steps.get_version.outputs.VERSION }}
-          git push origin v${{ steps.get_version.outputs.VERSION }}
+          docker pull ${{ env.DOCKER_REPO }}:${{ steps.get_version.outputs.VERSION }}
+          docker tag ${{ env.DOCKER_REPO }}:${{ steps.get_version.outputs.VERSION }} ${{ env.DOCKER_REPO }}:latest
+          docker push ${{ env.DOCKER_REPO }}:latest
 
       - name: Create Release
         if: steps.check_image.outputs.EXISTS == 'false'
