@@ -22,7 +22,7 @@ image:
 #
 persistence:
   accessMode: ReadWriteOnce
-  size: 100Gi
+  size: 300Gi
   storageClass: ""
 
 #
@@ -51,6 +51,14 @@ ingress:
     - path: /
       pathType: ImplementationSpecific
   tls: []
+
+#
+# Affinity and Anti-Affinity
+#
+
+affinity: {}
+tolerations: []
+nodeSelector: {}
 
 #
 # Overpass Settings
