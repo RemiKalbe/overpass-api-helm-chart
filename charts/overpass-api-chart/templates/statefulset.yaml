@@ -6,7 +6,6 @@ metadata:
     {{- include "overpass-api.labels" . | nindent 4 }}
 spec:
   serviceName: {{ include "overpass-api.fullname" . }}
-  serviceAccountName: {{ include "overpass-api.fullname" . }}-sa
   replicas: {{ .Values.replicaCount }}
   updateStrategy:
     type: RollingUpdate
@@ -18,6 +17,7 @@ spec:
       labels:
         {{- include "overpass-api.selectorLabels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "overpass-api.fullname" . }}-sa
       {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
