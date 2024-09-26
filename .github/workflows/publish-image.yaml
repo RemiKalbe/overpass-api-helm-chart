@@ -33,7 +33,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             VERSION=$(echo "${{ toJson(github.event.pull_request.labels.*.name) }}" | jq -r '.[] | select(startswith("image-")) | sub("image-"; "")')
             OVERPASS_VERSION=$(echo "${{ toJson(github.event.pull_request.labels.*.name) }}" | jq -r '.[] | select(startswith("overpass-")) | sub("overpass-"; "")')
-            else
+          else
             VERSION=$(yq e '.appVersion' charts/overpass-api-chart/Chart.yaml)
             OVERPASS_VERSION=$(echo $VERSION | cut -d'.' -f1-3)
           fi

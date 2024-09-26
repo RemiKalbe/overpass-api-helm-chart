@@ -33,12 +33,15 @@ spec:
       initContainers:
         - name: init-overpass-data
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - /bin/bash
-            - /app/init_overpass.sh
+            - /scripts/init_overpass.sh
           volumeMounts:
           - name: data
             mountPath: /app/db
+          - name: scripts
+            mountPath: /scripts
           env:
           - name: OVERPASS_PLANET_URL
             value: "{{ .Values.overpass.planetUrl }}"
@@ -50,6 +53,9 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/bash
+            - /scripts/run_overpass.sh
           env:
           - name: OVERPASS_META
             value: {{ .Values.overpass.meta | quote }}
@@ -82,11 +88,13 @@ spec:
           volumeMounts:
           - name: data
             mountPath: /app/db
+          - name: scripts
+            mountPath: /scripts
           readinessProbe:
             exec:
               command:
                 - /bin/bash
-                - /app/health_check.sh
+                - /scripts/health_check.sh
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
@@ -95,13 +103,18 @@ spec:
             exec:
               command:
                 - /bin/bash
-                - /app/health_check.sh
+                - /scripts/health_check.sh
             initialDelaySeconds: 60
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      - name: scripts
+        configMap:
+          name: {{ include "overpass-api.fullname" . }}-scripts
+          defaultMode: 0755
   volumeClaimTemplates:
   - metadata:
       name: data

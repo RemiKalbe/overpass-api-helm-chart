@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y \
   make \
   expat \
   libexpat1-dev \
+  libosmium2-dev \
+  libbz2-dev \
   zlib1g-dev \
   osmium-tool \
   bzip2 \
@@ -53,17 +55,10 @@ ENV PATH="/app/osm-3s/bin:${PATH}" \
   OVERPASS_SPACE=536870912 \
   OVERPASS_MAX_TIMEOUT=1000
 
-# Copy scripts and configuration
-COPY run_overpass.sh /app/
-COPY init_overpass.sh /app/
-COPY health_check.sh /app/
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
-
-# Make scripts executable
-RUN chmod +x /app/*.sh
 
 # Expose the default Overpass API port
 EXPOSE 80
 
-# Set entrypoint
-ENTRYPOINT ["/app/run_overpass.sh"]
+# The entrypoint will be set by the Kubernetes manifest
