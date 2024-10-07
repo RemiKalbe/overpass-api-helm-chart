@@ -19,7 +19,7 @@ data:
       local planet_file="${WORK_DIR}/${file_name}"
 
       echo "Downloading planet file: ${file_name}" >&2
-      wget -O "${planet_file}" "$OVERPASS_PLANET_URL"
+      wget --progress=dot -e dotbytes=30M -O "${planet_file}" "$OVERPASS_PLANET_URL"
 
       if [ ! -f "${planet_file}" ]; then
         echo "Error: Failed to download ${file_name}" >&2
@@ -49,7 +49,7 @@ data:
 
         # Temporarily disable 'set -e' to capture errors
         set +e
-        osmconvert "${planet_file}" -o="${osm_file}" --verbose
+        osmconvert "${planet_file}" -o="${osm_file}" -v
         exit_status=$?
         set -e
 
