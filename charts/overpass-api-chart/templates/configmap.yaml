@@ -12,27 +12,66 @@ data:
 
     OVERPASS_DB_DIR="/app/db"
     OVERPASS_DIFF_DIR="/app/diffs"
+    WORK_DIR="/app/work"
 
     download_planet_file() {
-      local file_ext="${OVERPASS_PLANET_URL##*.}"
-      local planet_file="/app/planet.${file_ext}"
+      local file_name=$(basename "$OVERPASS_PLANET_URL")
+      local planet_file="${WORK_DIR}/${file_name}"
 
-      echo "Downloading planet file with extension: ${file_ext}"
+      echo "Downloading planet file: ${file_name}" >&2
       wget -O "${planet_file}" "$OVERPASS_PLANET_URL"
+
+      if [ ! -f "${planet_file}" ]; then
+        echo "Error: Failed to download ${file_name}" >&2
+        exit 1
+      fi
 
       echo "${planet_file}"
     }
 
     prepare_init_file() {
       local planet_file="$1"
-      local file_ext="${planet_file##*.}"
 
-      if [ "$file_ext" = "pbf" ]; then
-        echo "Converting PBF to OSM format..."
-        osmium cat -o "/app/planet.osm" "${planet_file}"
-        echo "/app/planet.osm"
-      else
+      if [ ! -f "${planet_file}" ]; then
+        echo "Error: Planet file not found: ${planet_file}" >&2
+        exit 1
+      fi
+
+      if [[ "$planet_file" == *.osm.pbf ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Converting PBF to OSM format using osmconvert..." >&2
+        local osm_file="${WORK_DIR}/planet.osm"
+
+        # Check if osmconvert is available
+        if ! command -v osmconvert >/dev/null 2>&1; then
+          echo "Error: osmconvert command not found. Please install osmconvert." >&2
+          exit 1
+        fi
+
+        # Temporarily disable 'set -e' to capture errors
+        set +e
+        osmconvert "${planet_file}" -o="${osm_file}" --verbose
+        exit_status=$?
+        set -e
+
+        if [ $exit_status -ne 0 ]; then
+          echo "Error: osmconvert failed with exit status $exit_status" >&2
+          echo "Check for possible errors during conversion." >&2
+          sleep 5
+          exit $exit_status
+        fi
+
+        if [ ! -f "${osm_file}" ]; then
+          echo "Error: OSM file not created: ${osm_file}" >&2
+          exit 1
+        fi
+
+        echo "${osm_file}"
+      elif [[ "$planet_file" == *.osm.bz2 ]]; then
+        echo "Using bz2 file directly..." >&2
         echo "${planet_file}"
+      else
+        echo "Unsupported file format: ${planet_file}" >&2
+        exit 1
       fi
     }
 
@@ -40,34 +79,65 @@ data:
       local planet_file="$1"
       local init_file="$2"
 
-      rm "${planet_file}"
-      [ "${planet_file}" != "${init_file}" ] && rm "${init_file}"
+      rm -f "${planet_file}"
+      [ "${planet_file}" != "${init_file}" ] && rm -f "${init_file}"
     }
 
     initialize_database() {
       if [ ! -f "$OVERPASS_DB_DIR/replicate_id" ]; then
-        echo "Initializing database..."
-        mkdir -p "$OVERPASS_DB_DIR"
-        mkdir -p "$OVERPASS_DIFF_DIR"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Initializing database..." >&2
+        mkdir -p "$OVERPASS_DB_DIR" "$OVERPASS_DIFF_DIR" "$WORK_DIR"
 
-        local planet_file=$(download_planet_file)
-        local init_file=$(prepare_init_file "${planet_file}")
+        local planet_file
+        planet_file=$(download_planet_file)
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Downloaded file: ${planet_file}" >&2
 
-        /app/osm-3s/bin/init_osm3s.sh "${init_file}" "$OVERPASS_DB_DIR" "/app/osm-3s" --meta="$OVERPASS_META" "--compression-method=$OVERPASS_COMPRESSION"
+        local init_file
+        init_file=$(prepare_init_file "${planet_file}")
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Prepared file: ${init_file}" >&2
+
+        if [ ! -f "${init_file}" ]; then
+          echo "Error: Prepared file not found: ${init_file}" >&2
+          exit 1
+        fi
+
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Initializing Overpass database with file: ${init_file}" >&2
+
+        # Temporarily disable 'set -e'
+        set +e
+
+        # Run init_osm3s.sh and redirect output to stderr
+        /app/osm-3s/bin/init_osm3s.sh "${init_file}" "$OVERPASS_DB_DIR" "/app/osm-3s" \
+            --meta="$OVERPASS_META" --compression-method="$OVERPASS_COMPRESSION" 2>&1
+
+        exit_status=$?
+
+        # Re-enable 'set -e'
+        set -e
+
+        echo "init_osm3s.sh exited with status $exit_status" >&2
+
+        if [ $exit_status -ne 0 ]; then
+          echo "Error: init_osm3s.sh failed. Exiting." >&2
+          sleep 5  # Ensure logs are flushed
+          exit $exit_status
+        fi
 
         cleanup_files "${planet_file}" "${init_file}"
 
-        echo "Database initialization complete."
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Database initialization complete." >&2
       else
-        echo "Database already initialized."
+        echo "Database already initialized." >&2
       fi
     }
+
 
     main() {
       initialize_database
     }
 
     main
+
 
   run_overpass.sh: |
     #!/bin/bash
@@ -78,7 +148,7 @@ data:
     OVERPASS_DIFF_DIR="/app/diffs"
 
     start_api_and_updates() {
-      echo "Starting Overpass API and update process..."
+      echo "Starting Overpass API and update process..." >&2
       /app/osm-3s/bin/dispatcher --osm-base --meta="$OVERPASS_META" --db-dir="$OVERPASS_DB_DIR" &
       
       # Start the continuous update process
@@ -86,17 +156,17 @@ data:
       /app/osm-3s/bin/apply_osc_to_db.sh "$OVERPASS_DIFF_DIR" "$OVERPASS_UPDATE_FREQUENCY" --meta="$OVERPASS_META" &
       /app/osm-3s/bin/rules_loop.sh "$OVERPASS_DB_DIR" "$OVERPASS_RULES_LOAD" &
 
-      echo "Configuring and starting fcgiwrap..."
+      echo "Configuring and starting fcgiwrap..." >&2
       sed -i "s/FCGI_CHILDREN=.*/FCGI_CHILDREN=$OVERPASS_FASTCGI_PROCESSES/" /etc/init.d/fcgiwrap
       service fcgiwrap start
 
-      echo "Configuring Overpass settings..."
+      echo "Configuring Overpass settings..." >&2
       echo "$OVERPASS_RATE_LIMIT" > "$OVERPASS_DB_DIR/rate_limit"
       echo "$OVERPASS_TIME" > "$OVERPASS_DB_DIR/max_allowed_time"
       echo "$OVERPASS_SPACE" > "$OVERPASS_DB_DIR/max_allowed_space"
       echo "$OVERPASS_MAX_TIMEOUT" > "$OVERPASS_DB_DIR/max_allowed_timeout"
 
-      echo "Starting nginx..."
+      echo "Starting nginx..." >&2
       nginx -g 'daemon off;'
     }
 

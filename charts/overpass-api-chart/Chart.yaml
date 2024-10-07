@@ -14,5 +14,5 @@ keywords:
 - api
 
 type: application
-version: 0.5.0
-appVersion: "0.7.62.3" # The last number is the Dockerfile version for that overpass-api version
+version: 0.5.1
+appVersion: "0.7.62.4" # The last number is the Dockerfile version for that overpass-api version
