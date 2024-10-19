@@ -14,63 +14,91 @@ data:
     OVERPASS_DIFF_DIR="/app/diffs"
     WORK_DIR="/app/work"
 
+    # Define the log function with log levels
+    log() {
+      local level="$1"
+      shift
+      echo "$(date '+%Y-%m-%d %H:%M:%S') [$level] - $*" >&2
+    }
+
+    # Function to display available disk space
+    display_disk_space() {
+      local path="$1"
+      local space
+      space=$(df -h "${path}" | awk 'NR==2 {print $4}')
+      log "INFO" "Available disk space at ${path}: ${space}"
+    }
+
+    # Function to monitor disk space periodically
+    monitor_disk_space() {
+      while true; do
+        display_disk_space "${OVERPASS_DB_DIR}"
+        sleep 60
+      done
+    }
+
+    # Function to download the planet file
     download_planet_file() {
-      local file_name=$(basename "$OVERPASS_PLANET_URL")
+      local file_name
+      file_name=$(basename "$OVERPASS_PLANET_URL")
       local planet_file="${WORK_DIR}/${file_name}"
 
-      echo "Downloading planet file: ${file_name}" >&2
+      log "INFO" "Downloading planet file: ${file_name}"
+
       wget --progress=dot -e dotbytes=30M -O "${planet_file}" "$OVERPASS_PLANET_URL"
 
       if [ ! -f "${planet_file}" ]; then
-        echo "Error: Failed to download ${file_name}" >&2
+        log "ERROR" "Failed to download ${file_name}"
         exit 1
       fi
 
       echo "${planet_file}"
     }
 
+    # Function to prepare the initialization file
     prepare_init_file() {
       local planet_file="$1"
 
       if [ ! -f "${planet_file}" ]; then
-        echo "Error: Planet file not found: ${planet_file}" >&2
+        log "ERROR" "Planet file not found: ${planet_file}"
         exit 1
       fi
 
       if [[ "$planet_file" == *.osm.pbf ]]; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - Converting PBF to OSM format using osmconvert..." >&2
+        log "INFO" "Converting PBF to OSM format using osmconvert with progress..."
         local osm_file="${WORK_DIR}/planet.osm"
 
         # Check if osmconvert is available
         if ! command -v osmconvert >/dev/null 2>&1; then
-          echo "Error: osmconvert command not found. Please install osmconvert." >&2
+          log "ERROR" "osmconvert command not found. Please install osmconvert."
           exit 1
         fi
 
-        # Temporarily disable 'set -e' to capture errors
+        # Use pv to show progress
         set +e
-        osmconvert "${planet_file}" -o="${osm_file}" -v
+        stdbuf -oL osmconvert "${planet_file}" -o="${osm_file}" --verbose --progress 2>&1 | \
+          pv -i 60 -f "%t %p%%\n" > /dev/null
         exit_status=$?
         set -e
 
         if [ $exit_status -ne 0 ]; then
-          echo "Error: osmconvert failed with exit status $exit_status" >&2
-          echo "Check for possible errors during conversion." >&2
+          log "ERROR" "osmconvert failed with exit status $exit_status"
+          log "ERROR" "Check for possible errors during conversion."
           sleep 5
           exit $exit_status
         fi
 
         if [ ! -f "${osm_file}" ]; then
-          echo "Error: OSM file not created: ${osm_file}" >&2
+          log "ERROR" "OSM file not created: ${osm_file}"
           exit 1
         fi
 
         echo "${osm_file}"
       elif [[ "$planet_file" == *.osm.bz2 ]]; then
-        echo "Using bz2 file directly..." >&2
+        log "INFO" "Using bz2 file directly..."
         echo "${planet_file}"
       else
-        echo "Unsupported file format: ${planet_file}" >&2
+        log "ERROR" "Unsupported file format: ${planet_file}"
         exit 1
       fi
     }
@@ -83,54 +111,68 @@ data:
       [ "${planet_file}" != "${init_file}" ] && rm -f "${init_file}"
     }
 
+    # Function to initialize the database
     initialize_database() {
       if [ ! -f "$OVERPASS_DB_DIR/replicate_id" ]; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - Initializing database..." >&2
+        log "INFO" "Initializing database..."
         mkdir -p "$OVERPASS_DB_DIR" "$OVERPASS_DIFF_DIR" "$WORK_DIR"
+
+        display_disk_space "${WORK_DIR}"
 
         local planet_file
         planet_file=$(download_planet_file)
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - Downloaded file: ${planet_file}" >&2
+        log "INFO" "Downloaded file: ${planet_file}"
+
+        display_disk_space "${WORK_DIR}"
 
         local init_file
         init_file=$(prepare_init_file "${planet_file}")
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - Prepared file: ${init_file}" >&2
+        log "INFO" "Prepared file: ${init_file}"
+
+        display_disk_space "${WORK_DIR}"
 
         if [ ! -f "${init_file}" ]; then
-          echo "Error: Prepared file not found: ${init_file}" >&2
+          log "ERROR" "Prepared file not found: ${init_file}"
           exit 1
         fi
 
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - Initializing Overpass database with file: ${init_file}" >&2
+        log "INFO" "Initializing Overpass database with file: ${init_file}"
 
-        # Temporarily disable 'set -e'
+        display_disk_space "${OVERPASS_DB_DIR}"
+
+        # Temporarily disable 'set -e' to capture errors
         set +e
 
-        # Run init_osm3s.sh and redirect output to stderr
+        # Start background disk space monitoring
+        monitor_disk_space &
+        disk_monitor_pid=$!
+
+        # Run the database initialization script
         /app/osm-3s/bin/init_osm3s.sh "${init_file}" "$OVERPASS_DB_DIR" "/app/osm-3s" \
-            --meta="$OVERPASS_META" --compression-method="$OVERPASS_COMPRESSION" 2>&1
+          --meta="$OVERPASS_META" --compression-method="$OVERPASS_COMPRESSION"
 
         exit_status=$?
 
-        # Re-enable 'set -e'
+        # Stop disk space monitoring
+        kill "$disk_monitor_pid"
+
         set -e
 
-        echo "init_osm3s.sh exited with status $exit_status" >&2
-
         if [ $exit_status -ne 0 ]; then
-          echo "Error: init_osm3s.sh failed. Exiting." >&2
-          sleep 5  # Ensure logs are flushed
+          log "ERROR" "init_osm3s.sh failed with exit status $exit_status. Exiting."
+          sleep 5
           exit $exit_status
         fi
 
         cleanup_files "${planet_file}" "${init_file}"
 
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - Database initialization complete." >&2
+        display_disk_space "${WORK_DIR}"
+
+        log "INFO" "Database initialization complete."
       else
-        echo "Database already initialized." >&2
+        log "INFO" "Database already initialized."
       fi
     }
-
 
     main() {
       initialize_database
@@ -147,26 +189,39 @@ data:
     OVERPASS_DB_DIR="/app/db"
     OVERPASS_DIFF_DIR="/app/diffs"
 
+    # Define the log function with log levels
+    log() {
+      local level="$1"
+      shift
+      echo "$(date '+%Y-%m-%d %H:%M:%S') [$level] - $*" >&2
+    }
+
     start_api_and_updates() {
-      echo "Starting Overpass API and update process..." >&2
+      log "INFO" "Starting Overpass API and update processes..."
+
       /app/osm-3s/bin/dispatcher --osm-base --meta="$OVERPASS_META" --db-dir="$OVERPASS_DB_DIR" &
-      
+
       # Start the continuous update process
+      log "INFO" "Starting fetch_osc.sh..."
       /app/osm-3s/bin/fetch_osc.sh "$OVERPASS_UPDATE_FREQUENCY" "$OVERPASS_DIFF_URL" "$OVERPASS_DIFF_DIR" &
+
+      log "INFO" "Starting apply_osc_to_db.sh..."
       /app/osm-3s/bin/apply_osc_to_db.sh "$OVERPASS_DIFF_DIR" "$OVERPASS_UPDATE_FREQUENCY" --meta="$OVERPASS_META" &
+
+      log "INFO" "Starting rules_loop.sh..."
       /app/osm-3s/bin/rules_loop.sh "$OVERPASS_DB_DIR" "$OVERPASS_RULES_LOAD" &
 
-      echo "Configuring and starting fcgiwrap..." >&2
+      log "INFO" "Configuring and starting fcgiwrap..."
       sed -i "s/FCGI_CHILDREN=.*/FCGI_CHILDREN=$OVERPASS_FASTCGI_PROCESSES/" /etc/init.d/fcgiwrap
       service fcgiwrap start
 
-      echo "Configuring Overpass settings..." >&2
+      log "INFO" "Configuring Overpass settings..."
       echo "$OVERPASS_RATE_LIMIT" > "$OVERPASS_DB_DIR/rate_limit"
       echo "$OVERPASS_TIME" > "$OVERPASS_DB_DIR/max_allowed_time"
       echo "$OVERPASS_SPACE" > "$OVERPASS_DB_DIR/max_allowed_space"
       echo "$OVERPASS_MAX_TIMEOUT" > "$OVERPASS_DB_DIR/max_allowed_timeout"
 
-      echo "Starting nginx..." >&2
+      log "INFO" "Starting nginx..."
       nginx -g 'daemon off;'
     }
 
@@ -185,6 +240,13 @@ data:
 
     NODE_ID=1
 
+    # Define the log function with log levels
+    log() {
+      local level="$1"
+      shift
+      echo "$(date '+%Y-%m-%d %H:%M:%S') [$level] - $*" >&2
+    }
+
     # if we allow duplicate queries, the healthcheck will fail because it always fetches node id 1
     # if that is the case (default), we query a random node
     if [[ ! -n ${OVERPASS_ALLOW_DUPLICATE_QUERIES} || ${OVERPASS_ALLOW_DUPLICATE_QUERIES} == "no" ]]; then
@@ -193,4 +255,11 @@ data:
 
     OVERPASS_HEALTHCHECK='curl --noproxy "*" -qf "http://localhost/api/interpreter?data=\[out:json\];node(${NODE_ID});out;" | jq ".generator" |grep -q Overpass || exit 1'
 
-    eval "${OVERPASS_HEALTHCHECK}"
+    # Perform the health check
+    if eval "${OVERPASS_HEALTHCHECK}"; then
+      log "INFO" "Health check passed."
+      exit 0
+    else
+      log "ERROR" "Health check failed."
+      exit 1
+    fi
