@@ -75,15 +75,23 @@ data:
         fi
 
         # Use pv to show progress
+        # Run osmconvert and capture its stderr
         set +e
-        stdbuf -oL osmconvert "${planet_file}" -o="${osm_file}" --verbose --progress 2>&1 | \
+
+        stdbuf -oL osmconvert "${planet_file}" -o="${osm_file}" --verbose \
+          2> "${WORK_DIR}/osmconvert_error.log" | \
           pv -i 60 --format "%t %p%%\n" > /dev/null
-        exit_status=$?
+
+        # Capture the exit status of osmconvert using PIPESTATUS
+        exit_status=${PIPESTATUS[0]}
+
         set -e
 
+        # If osmconvert failed, display the error log
         if [ $exit_status -ne 0 ]; then
           log "ERROR" "osmconvert failed with exit status $exit_status"
-          log "ERROR" "Check for possible errors during conversion."
+          log "ERROR" "Error output from osmconvert:"
+          cat "${WORK_DIR}/osmconvert_error.log" >&2
           sleep 5
           exit $exit_status
         fi
