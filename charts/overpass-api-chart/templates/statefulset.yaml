@@ -40,6 +40,8 @@ spec:
           volumeMounts:
           - name: data
             mountPath: /app/db
+          - name: data
+            mountPath: /app/work
           - name: scripts
             mountPath: /scripts
           env:
@@ -88,6 +90,8 @@ spec:
           volumeMounts:
           - name: data
             mountPath: /app/db
+          - name: data
+            mountPath: /app/work
           - name: scripts
             mountPath: /scripts
           readinessProbe:
