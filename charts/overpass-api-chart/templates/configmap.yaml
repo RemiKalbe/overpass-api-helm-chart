@@ -77,7 +77,7 @@ data:
         # Use pv to show progress
         set +e
         stdbuf -oL osmconvert "${planet_file}" -o="${osm_file}" --verbose --progress 2>&1 | \
-          pv -i 60 -f "%t %p%%\n" > /dev/null
+          pv -i 60 --format "%t %p%%\n" > /dev/null
         exit_status=$?
         set -e
 
