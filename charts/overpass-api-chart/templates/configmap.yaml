@@ -45,7 +45,7 @@ data:
 
       log "INFO" "Downloading planet file: ${file_name}"
 
-      wget --progress=dot -e dotbytes=30M -O "${planet_file}" "$OVERPASS_PLANET_URL"
+      wget -nv --show-progress --progress=dot -e dotbytes=30M -O "${planet_file}" "$OVERPASS_PLANET_URL"
 
       if [ ! -f "${planet_file}" ]; then
         log "ERROR" "Failed to download ${file_name}"
@@ -65,7 +65,7 @@ data:
       fi
 
       if [[ "$planet_file" == *.osm.pbf ]]; then
-        log "INFO" "Converting PBF to OSM format using osmium with progress..."
+        log "INFO" "Converting PBF to BZ2 format using osmium with progress..."
         local osm_file="${WORK_DIR}/planet.osm.bz2"
 
         # Check if osmium is available
@@ -74,27 +74,7 @@ data:
           exit 1
         fi
 
-        # Use pv to show progress
-        # Run osmium and capture its stderr
-        set +e
-
-        stdbuf -oL osmium cat "${planet_file}" -o "${osm_file}" --verbose \
-          2> "${WORK_DIR}/osmium_error.log" | \
-          pv -i 60 --format "%t %p%%\n" > /dev/null
-
-        # Capture the exit status of osmium using PIPESTATUS
-        exit_status=${PIPESTATUS[0]}
-
-        set -e
-
-        # If osmium failed, display the error log
-        if [ $exit_status -ne 0 ]; then
-          log "ERROR" "osmium failed with exit status $exit_status"
-          log "ERROR" "Error output from osmium:"
-          cat "${WORK_DIR}/osmium_error.log" >&2
-          sleep 5
-          exit $exit_status
-        fi
+        osmium cat "${planet_file}" -o "${osm_file}" --verbose
 
         if [ ! -f "${osm_file}" ]; then
           log "ERROR" "OSM file not created: ${osm_file}"
