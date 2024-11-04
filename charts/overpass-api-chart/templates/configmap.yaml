@@ -78,7 +78,7 @@ data:
         # Run osmium and capture its stderr
         set +e
 
-        stdbuf -oL osmium cat "${planet_file}" -o="${osm_file}" --verbose \
+        stdbuf -oL osmium cat "${planet_file}" -o "${osm_file}" --verbose \
           2> "${WORK_DIR}/osmium_error.log" | \
           pv -i 60 --format "%t %p%%\n" > /dev/null
 
