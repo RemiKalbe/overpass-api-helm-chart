@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
   libosmium2-dev \
   libbz2-dev \
   zlib1g-dev \
-  osmctools \
+  osmium-tool \
   bzip2 \
   fcgiwrap \
   nginx \
