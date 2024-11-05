@@ -74,7 +74,7 @@ data:
           exit 1
         fi
 
-        osmium cat "${planet_file}" -o "${osm_file}" --verbose
+        osmium cat "${planet_file}" -o "${osm_file}" --verbose --overwrite
 
         if [ ! -f "${osm_file}" ]; then
           log "ERROR" "OSM file not created: ${osm_file}"
