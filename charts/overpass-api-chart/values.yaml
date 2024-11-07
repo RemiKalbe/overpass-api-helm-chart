@@ -75,16 +75,16 @@ overpass:
   # Default recommendation:
   #   Use the official planet URL unless you have specific regional needs or internal mirrors.
 
-  diffUrl: "https://planet.openstreetmap.org/replication/minute/"
+  diffUrl: "https://planet.openstreetmap.org/replication/minute"
   # URL to fetch OSM change files (diffs)
   # Explanation:
   #   This setting specifies the source of incremental updates (diffs) used to keep your Overpass database current after the initial import.
   #   The URL points to a directory containing change files, which are organized by date and time.
   #   
   # Options: (non-exhaustive list)
-  #   - Minute diffs: "https://planet.openstreetmap.org/replication/minute/"
-  #   - Hourly diffs: "https://planet.openstreetmap.org/replication/hour/"
-  #   - Daily diffs:  "https://planet.openstreetmap.org/replication/day/"
+  #   - Minute diffs: "https://planet.openstreetmap.org/replication/minute"
+  #   - Hourly diffs: "https://planet.openstreetmap.org/replication/hour"
+  #   - Daily diffs:  "https://planet.openstreetmap.org/replication/day"
   #   
   # Important Note:
   #   The frequency of updates is determined by the Overpass API's internal update process, which runs continuously.
