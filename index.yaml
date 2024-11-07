@@ -2,6 +2,26 @@ apiVersion: v1
 entries:
   overpass-api:
   - apiVersion: v2
+    appVersion: 0.7.62.7
+    created: "2024-11-07T02:12:51.67939524Z"
+    description: A Helm chart for Overpass API
+    digest: ee679e451a20d59776439686b0419da80b758cf98725ceaf4bf7739b52ed36af
+    home: https://github.com/RemiKalbe/overpass-api-helm-chart
+    keywords:
+    - overpass
+    - osm
+    - api
+    maintainers:
+    - email: me@remi.boo
+      name: Rémi Kalbe
+    name: overpass-api
+    sources:
+    - https://github.com/RemiKalbe/overpass-api-helm-chart
+    type: application
+    urls:
+    - overpass-api-0.5.11.tgz
+    version: 0.5.11
+  - apiVersion: v2
     appVersion: 0.7.62.6
     created: "2024-11-05T13:37:14.535740202Z"
     description: A Helm chart for Overpass API
@@ -541,4 +561,4 @@ entries:
     urls:
     - overpass-api-0.2.0.tgz
     version: 0.2.0
-generated: "2024-11-05T13:37:14.535992205Z"
+generated: "2024-11-07T02:12:51.6795392Z"
