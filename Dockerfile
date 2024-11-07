@@ -42,19 +42,19 @@ RUN wget https://dev.overpass-api.de/releases/osm-3s_v${OVERPASS_VERSION}.tar.gz
 
 # Set up environment variables
 ENV PATH="/app/osm-3s/bin:${PATH}" \
-  OVERPASS_META="yes" \
-  OVERPASS_PLANET_URL="https://planet.openstreetmap.org/planet/planet-latest.osm.bz2" \
-  OVERPASS_DIFF_URL="https://planet.openstreetmap.org/replication/minute/" \
-  OVERPASS_COMPRESSION="gz" \
-  OVERPASS_RULES_LOAD=1 \
-  OVERPASS_UPDATE_FREQUENCY="minute" \
-  OVERPASS_DB_DIR="/app/db" \
-  OVERPASS_DIFF_DIR="/app/diffs" \
-  OVERPASS_FASTCGI_PROCESSES=4 \
-  OVERPASS_RATE_LIMIT=1024 \
-  OVERPASS_TIME=1000 \
-  OVERPASS_SPACE=536870912 \
-  OVERPASS_MAX_TIMEOUT=1000
+  BOO_OVERPASS_META="yes" \
+  BOO_OVERPASS_PLANET_URL="https://planet.openstreetmap.org/planet/planet-latest.osm.bz2" \
+  BOO_OVERPASS_DIFF_URL="https://planet.openstreetmap.org/replication/minute/" \
+  BOO_OVERPASS_COMPRESSION="gz" \
+  BOO_OVERPASS_RULES_LOAD=1 \
+  BOO_OVERPASS_UPDATE_FREQUENCY="minute" \
+  BOO_OVERPASS_DB_DIR="/app/db" \
+  BOO_OVERPASS_DIFF_DIR="/app/diffs" \
+  BOO_OVERPASS_FASTCGI_PROCESSES=4 \
+  BOO_OVERPASS_RATE_LIMIT=1024 \
+  BOO_OVERPASS_TIME=1000 \
+  BOO_OVERPASS_SPACE=536870912 \
+  BOO_OVERPASS_MAX_TIMEOUT=1000
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf

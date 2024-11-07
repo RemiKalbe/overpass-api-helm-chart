@@ -45,11 +45,11 @@ spec:
           - name: scripts
             mountPath: /scripts
           env:
-          - name: OVERPASS_PLANET_URL
+          - name: BOO_OVERPASS_PLANET_URL
             value: "{{ .Values.overpass.planetUrl }}"
-          - name: OVERPASS_META
+          - name: BOO_OVERPASS_META
             value: "{{ .Values.overpass.meta }}"
-          - name: OVERPASS_COMPRESSION
+          - name: BOO_OVERPASS_COMPRESSION
             value: "{{ .Values.overpass.compression }}"
       containers:
         - name: {{ .Chart.Name }}
@@ -59,29 +59,29 @@ spec:
             - /bin/bash
             - /scripts/run_overpass.sh
           env:
-          - name: OVERPASS_META
+          - name: BOO_OVERPASS_META
             value: {{ .Values.overpass.meta | quote }}
-          - name: OVERPASS_FASTCGI_PROCESSES
+          - name: BOO_OVERPASS_FASTCGI_PROCESSES
             value: {{ .Values.overpass.fastcgiProcesses | quote }}
-          - name: OVERPASS_RATE_LIMIT
+          - name: BOO_OVERPASS_RATE_LIMIT
             value: {{ .Values.overpass.rateLimit | quote }}
-          - name: OVERPASS_TIME
+          - name: BOO_OVERPASS_TIME
             value: {{ .Values.overpass.time | quote }}
-          - name: OVERPASS_SPACE
+          - name: BOO_OVERPASS_SPACE
             value: {{ .Values.overpass.space | quote }}
-          - name: OVERPASS_MAX_TIMEOUT
+          - name: BOO_OVERPASS_MAX_TIMEOUT
             value: {{ .Values.overpass.maxTimeout | quote }}
-          - name: OVERPASS_PLANET_URL
+          - name: BOO_OVERPASS_PLANET_URL
             value: {{ .Values.overpass.planetUrl | quote }}
-          - name: OVERPASS_DIFF_URL
+          - name: BOO_OVERPASS_DIFF_URL
             value: {{ .Values.overpass.diffUrl | quote }}
-          - name: OVERPASS_UPDATE_FREQUENCY
+          - name: BOO_OVERPASS_UPDATE_FREQUENCY
             value: {{ .Values.overpass.updateFrequency | quote }}
-          - name: OVERPASS_COMPRESSION
+          - name: BOO_OVERPASS_COMPRESSION
             value: {{ .Values.overpass.compression | quote }}
-          - name: OVERPASS_RULES_LOAD
+          - name: BOO_OVERPASS_RULES_LOAD
             value: {{ .Values.overpass.rulesLoad | quote }}
-          - name: OVERPASS_ALLOW_DUPLICATE_QUERIES
+          - name: BOO_OVERPASS_ALLOW_DUPLICATE_QUERIES
             value: {{ .Values.overpass.allowDuplicateQueries | quote }}
           ports:
             - name: http
