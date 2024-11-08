@@ -40,12 +40,12 @@ data:
     # Function to download the planet file
     download_planet_file() {
       local file_name
-      file_name=$(basename "$OVERPASS_PLANET_URL")
+      file_name=$(basename "$BOO_OVERPASS_PLANET_URL")
       local planet_file="${BOO_WORK_DIR}/${file_name}"
 
       log "INFO" "Downloading planet file: ${file_name}"
 
-      wget -nv --show-progress --progress=dot -e dotbytes=30M -O "${planet_file}" "$OVERPASS_PLANET_URL"
+      wget -nv --show-progress --progress=dot -e dotbytes=30M -O "${planet_file}" "$BOO_OVERPASS_PLANET_URL"
 
       if [ ! -f "${planet_file}" ]; then
         log "ERROR" "Failed to download ${file_name}"
