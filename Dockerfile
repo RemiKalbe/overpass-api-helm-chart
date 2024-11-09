@@ -44,7 +44,7 @@ RUN wget https://dev.overpass-api.de/releases/osm-3s_v${OVERPASS_VERSION}.tar.gz
 ENV PATH="/app/osm-3s/bin:${PATH}" \
   BOO_OVERPASS_META="yes" \
   BOO_OVERPASS_PLANET_URL="https://planet.openstreetmap.org/planet/planet-latest.osm.bz2" \
-  BOO_OVERPASS_DIFF_URL="https://planet.openstreetmap.org/replication/minute/" \
+  BOO_OVERPASS_DIFF_URL="https://planet.openstreetmap.org/replication/minute" \
   BOO_OVERPASS_COMPRESSION="gz" \
   BOO_OVERPASS_RULES_LOAD=1 \
   BOO_OVERPASS_UPDATE_FREQUENCY="minute" \
