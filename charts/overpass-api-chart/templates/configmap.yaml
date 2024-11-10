@@ -187,17 +187,17 @@ data:
     start_api_and_updates() {
       log "INFO" "Starting Overpass API and update processes..."
 
-      /app/osm-3s/bin/dispatcher --osm-base --meta="$BOO_OVERPASS_META" --db-dir="$BOO_OVERPASS_DB_DIR" &
+      /app/osm-3s/bin/dispatcher --osm-base --meta="$BOO_OVERPASS_META" --db-dir="${BOO_OVERPASS_DB_DIR#/app/}" &
 
       # Start the continuous update process
       log "INFO" "Starting fetch_osc.sh..."
-      /app/osm-3s/bin/fetch_osc.sh "$BOO_OVERPASS_UPDATE_FREQUENCY" "$BOO_OVERPASS_DIFF_URL" "$BOO_OVERPASS_DIFF_DIR" &
+      /app/osm-3s/bin/fetch_osc.sh "$BOO_OVERPASS_UPDATE_FREQUENCY" "$BOO_OVERPASS_DIFF_URL" "${BOO_OVERPASS_DIFF_DIR#/app/}" &
 
       log "INFO" "Starting apply_osc_to_db.sh..."
-      /app/osm-3s/bin/apply_osc_to_db.sh "$BOO_OVERPASS_DIFF_DIR" "$BOO_OVERPASS_UPDATE_FREQUENCY" --meta="$BOO_OVERPASS_META" &
+      /app/osm-3s/bin/apply_osc_to_db.sh "${BOO_OVERPASS_DIFF_DIR#/app/}" "$BOO_OVERPASS_UPDATE_FREQUENCY" --meta="$BOO_OVERPASS_META" &
 
       log "INFO" "Starting rules_loop.sh..."
-      /app/osm-3s/bin/rules_loop.sh "$BOO_OVERPASS_DB_DIR" "$BOO_OVERPASS_RULES_LOAD" &
+      /app/osm-3s/bin/rules_loop.sh "${BOO_OVERPASS_DB_DIR#/app/}" "$BOO_OVERPASS_RULES_LOAD" &
 
       log "INFO" "Configuring and starting fcgiwrap..."
       sed -i "s/FCGI_CHILDREN=.*/FCGI_CHILDREN=$BOO_OVERPASS_FASTCGI_PROCESSES/" /etc/init.d/fcgiwrap
