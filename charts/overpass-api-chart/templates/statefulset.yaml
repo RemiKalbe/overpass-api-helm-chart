@@ -42,6 +42,8 @@ spec:
             mountPath: /app/db
           - name: data
             mountPath: /app/work
+          - name: data
+            mountPath: /app/diffs
           - name: scripts
             mountPath: /scripts
           env:
@@ -92,6 +94,8 @@ spec:
             mountPath: /app/db
           - name: data
             mountPath: /app/work
+          - name: data
+            mountPath: /app/diffs
           - name: scripts
             mountPath: /scripts
           readinessProbe:
